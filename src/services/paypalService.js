@@ -27,7 +27,7 @@ async function createSubscriptionApprovalUrl({ userId, email, planKey, returnUrl
     plan_id: plan.paypalPlanId,
     custom_id: `${String(userId)}:${plan.key}`,
     application_context: {
-      brand_name: "Email Validator",
+      brand_name: env.publisherName,
       user_action: "SUBSCRIBE_NOW",
       return_url: returnUrl,
       cancel_url: cancelUrl,

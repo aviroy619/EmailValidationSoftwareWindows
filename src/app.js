@@ -17,6 +17,15 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", at: new Date().toISOString() });
 });
 
+app.get("/api/app/info", (_req, res) => {
+  res.json({
+    name: env.appName,
+    publisherName: env.publisherName,
+    supportEmail: env.supportEmail,
+    websiteUrl: env.websiteUrl,
+  });
+});
+
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/validate", validateRoutes);
 app.use("/api/user", userRoutes);
