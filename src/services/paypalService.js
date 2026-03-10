@@ -15,6 +15,45 @@ async function getPayPalAccessToken() {
   return resp.data.access_token;
 }
 
+async function createSubscriptionApprovalUrl({ userId, email, planKey, returnUrl, cancelUrl }) {
+  const plan = PLANS[normalizePlanKey(planKey)];
+  if (!plan?.paypalPlanId) {
+    throw new Error(`Missing PayPal plan ID for ${planKey}`);
+  }
+
+  const accessToken = await getPayPalAccessToken();
+  const url = `${env.paypalApiBase}/v1/billing/subscriptions`;
+  const payload = {
+    plan_id: plan.paypalPlanId,
+    custom_id: `${String(userId)}:${plan.key}`,
+    application_context: {
+      brand_name: "Email Validator",
+      user_action: "SUBSCRIBE_NOW",
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
+    },
+  };
+
+  if (email) {
+    payload.subscriber = { email_address: email };
+  }
+
+  const resp = await axios.post(url, payload, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      Prefer: "return=representation",
+    },
+  });
+
+  const approveLink = (resp.data.links || []).find((link) => link.rel === "approve")?.href || "";
+  if (!approveLink) {
+    throw new Error("Missing PayPal approval link");
+  }
+
+  return { approvalUrl: approveLink, subscriptionId: resp.data.id, plan };
+}
+
 async function verifyWebhookSignature(reqBody, headers) {
   if (!env.paypalWebhookId || !env.paypalClientId || !env.paypalClientSecret) {
     return false;
@@ -88,6 +127,7 @@ async function logWebhook(payload, verified) {
 }
 
 module.exports = {
+  createSubscriptionApprovalUrl,
   verifyWebhookSignature,
   upsertSubscriptionFromWebhook,
   logWebhook,

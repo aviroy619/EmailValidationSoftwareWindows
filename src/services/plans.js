@@ -1,7 +1,27 @@
+const env = require("../config/env");
+
 const PLANS = {
-  starter: { planType: "Starter", creditsPerMonth: 500, monthlyPrice: 14.99 },
-  professional: { planType: "Professional", creditsPerMonth: 2000, monthlyPrice: 49.99 },
-  enterprise: { planType: "Enterprise", creditsPerMonth: 5000, monthlyPrice: 99.99 },
+  starter: {
+    key: "starter",
+    planType: "Starter",
+    creditsPerMonth: 500,
+    monthlyPrice: 14.99,
+    paypalPlanId: env.paypalStarterPlanId,
+  },
+  professional: {
+    key: "professional",
+    planType: "Professional",
+    creditsPerMonth: 2000,
+    monthlyPrice: 49.99,
+    paypalPlanId: env.paypalProfessionalPlanId,
+  },
+  enterprise: {
+    key: "enterprise",
+    planType: "Enterprise",
+    creditsPerMonth: 5000,
+    monthlyPrice: 99.99,
+    paypalPlanId: env.paypalEnterprisePlanId,
+  },
 };
 
 function normalizePlanKey(input = "") {

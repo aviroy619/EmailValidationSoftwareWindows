@@ -1,6 +1,9 @@
 const express = require("express");
 const { authRequired } = require("../middleware/auth");
 const { getDb } = require("../config/db");
+const env = require("../config/env");
+const { PLANS, normalizePlanKey } = require("../services/plans");
+const { createSubscriptionApprovalUrl } = require("../services/paypalService");
 const { parsePagination } = require("../utils/helpers");
 
 const router = express.Router();
@@ -20,6 +23,45 @@ router.get("/subscription", authRequired, async (req, res) => {
     nextBillingDate: subscription.nextBillingDate,
     status: subscription.status,
   });
+});
+
+router.get("/plans", authRequired, async (_req, res) => {
+  return res.json({
+    plans: Object.values(PLANS).map((plan) => ({
+      key: plan.key,
+      planType: plan.planType,
+      creditsPerMonth: plan.creditsPerMonth,
+      monthlyPrice: plan.monthlyPrice,
+      available: Boolean(plan.paypalPlanId),
+    })),
+  });
+});
+
+router.post("/subscription/checkout", authRequired, async (req, res) => {
+  const planKey = normalizePlanKey(req.body?.planKey || "");
+  const plan = PLANS[planKey];
+  if (!plan) {
+    return res.status(400).json({ message: "Invalid plan" });
+  }
+  if (!plan.paypalPlanId) {
+    return res.status(503).json({ message: "Plan is not configured for checkout" });
+  }
+
+  const db = getDb();
+  const user = await db.collection("users").findOne({ _id: req.auth.userId });
+  const safeBaseUrl = env.websiteUrl || env.apiBaseUrl;
+  const returnUrl = `${safeBaseUrl}/billing/success?source=desktop&plan=${encodeURIComponent(planKey)}`;
+  const cancelUrl = `${safeBaseUrl}/billing/cancel?source=desktop&plan=${encodeURIComponent(planKey)}`;
+
+  const { approvalUrl } = await createSubscriptionApprovalUrl({
+    userId: req.auth.userId,
+    email: user?.email || "",
+    planKey,
+    returnUrl,
+    cancelUrl,
+  });
+
+  return res.json({ approvalUrl });
 });
 
 router.get("/validations", authRequired, async (req, res) => {
